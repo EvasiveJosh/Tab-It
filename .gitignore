@@ -5,3 +5,6 @@ audioFiles/
 .venv/
 midi_output/
 output_stems/
+*.wav
+*.mid
+scratch
