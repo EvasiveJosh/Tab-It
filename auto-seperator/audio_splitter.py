@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import traceback
 import torch
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -92,6 +93,8 @@ def separate_audio():
         return response
 
     except Exception as e:
+        print(f"❌ ERROR during separation: {type(e).__name__}: {e}")
+        traceback.print_exc()
         # Clean up input file on error
         if os.path.exists(input_path):
             os.remove(input_path)
@@ -101,7 +104,3 @@ def separate_audio():
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "ok"})
-
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5001)
