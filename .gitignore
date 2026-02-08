@@ -8,3 +8,5 @@ output_stems/
 *.wav
 *.mid
 scratch
+*.mp3
+.env
