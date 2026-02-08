@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import type { ChangeEvent } from 'react';
 
-
-// 1. UPDATE INTERFACE
-interface NoteObj {
-  string: number;
-  fret: number;
-  stacking: boolean;
+// 1. NEW INTERFACE: Matches your specific { string: [], fret: [] } structure
+interface NoteGroup {
+  string: number[]; // e.g. [6, 5, 4]
+  fret: number[];   // e.g. [0, 2, 2]
 }
 
 interface TabJson {
-  notes: NoteObj[];
+  notes: NoteGroup[];
 }
 
 export default function TabDisplay() {
@@ -19,7 +17,7 @@ export default function TabDisplay() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- HANDLE FILE UPLOAD (Same as before) ---
+  // --- HANDLE FILE UPLOAD (No changes here) ---
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -47,7 +45,7 @@ export default function TabDisplay() {
     }
   };
 
-  // --- NEW LOGIC: HANDLING STACKING ---
+  // --- NEW GENERATION LOGIC ---
   const generateTab = (data?: TabJson) => {
     setError(null);
     try {
@@ -59,65 +57,43 @@ export default function TabDisplay() {
         throw new Error("JSON must contain a 'notes' array.");
       }
 
-      // --- STEP 1: GROUP NOTES INTO COLUMNS ---
-      // We assume the first note always starts a new column.
-      // Subsequent notes with stacking=true go into the SAME column.
-      
-      // A "Column" is a map of String -> Fret (e.g., { 6: "0", 5: "2" })
-      let columns: Array<{ [stringNum: number]: string }> = [];
-      let currentColumn: { [stringNum: number]: string } | null = null;
-
-      parsed.notes.forEach((note, index) => {
-        // Validate
-        if (note.string < 1 || note.string > 6) return;
-
-        // LOGIC: If it's the first note OR stacking is false, create NEW column
-        if (index === 0 || note.stacking === false) {
-          // Push previous column if exists
-          if (currentColumn) columns.push(currentColumn);
-          
-          // Start new column
-          currentColumn = {};
-        }
-
-        // Add note to current column (whether new or existing)
-        if (currentColumn) {
-           currentColumn[note.string] = note.fret.toString();
-        }
-      });
-      
-      // Push the final column
-      if (currentColumn) columns.push(currentColumn);
-
-      // --- STEP 2: RENDER STRINGS ---
-      // Initialize lines
+      // Initialize the 6 strings lines
       let lines: { [key: number]: string } = {
         1: "e|", 2: "B|", 3: "G|", 4: "D|", 5: "A|", 6: "E|"
       };
 
-      columns.forEach(col => {
-        // Find max width in this column (e.g. "12" is width 2, "5" is width 1)
-        // We need this so "5" gets padded to match "12" in a chord
-        let maxWidth = 0;
-        Object.values(col).forEach(fretStr => {
-          if (fretStr.length > maxWidth) maxWidth = fretStr.length;
-        });
+      // Iterate through each "Time Column" (NoteGroup)
+      parsed.notes.forEach((group) => {
+        // 1. Create a quick lookup map for this specific beat
+        // key = string number, value = fret string
+        let currentBeat: { [key: number]: string } = {};
         
-        // If column is empty (rest), default width is 1
-        if (maxWidth === 0) maxWidth = 1;
+        // Loop through the arrays in the group
+        group.string.forEach((stringNum, idx) => {
+          const fretNum = group.fret[idx];
+          currentBeat[stringNum] = fretNum.toString();
+        });
 
-        // Append to all 6 strings
-        for (let i = 1; i <= 6; i++) {
-          const fret = col[i]; // Value at this string (or undefined)
-          
+        // 2. Calculate Alignment Width
+        // Find the longest fret number in this chord (e.g. "12" is width 2)
+        let maxWidth = 0;
+        Object.values(currentBeat).forEach(f => {
+          if (f.length > maxWidth) maxWidth = f.length;
+        });
+        if (maxWidth === 0) maxWidth = 1; // Minimum width for empty beats
+
+        // 3. Append to all 6 lines
+        for (let string = 1; string <= 6; string++) {
+          const fret = currentBeat[string];
+
           if (fret !== undefined) {
-            // Note exists: Pad it to match max width
-            // e.g. "5" becomes "5 " if max is 2
+            // If note exists, pad it to match maxWidth
+            // e.g. "5" becomes "5-" if max is 2
             const padding = "-".repeat(maxWidth - fret.length);
-            lines[i] += `-${fret}${padding}-`;
+            lines[string] += `-${fret}${padding}-`;
           } else {
-            // No note: Add full dashes
-            lines[i] += `-${'-'.repeat(maxWidth)}-`;
+            // If silent, add full dashes
+            lines[string] += `-${'-'.repeat(maxWidth)}-`;
           }
         }
       });
@@ -130,7 +106,8 @@ export default function TabDisplay() {
       setTabOutput(finalString);
 
     } catch (err) {
-      setError("Invalid JSON format.");
+      setError("Invalid JSON format or array length mismatch.");
+      console.error(err);
     }
   };
 
@@ -138,20 +115,20 @@ export default function TabDisplay() {
     <div style={{ maxWidth: "800px", margin: "2rem auto", padding: "1rem" }}>
       <h1>Tab-It: Audio to Tab Converter</h1>
       
-      {/* UPLOAD */}
+      {/* Upload Section */}
       <div style={{ border: "2px dashed #ccc", padding: "20px", borderRadius: "8px", textAlign: "center" }}>
         <h3>Step 1: Upload Audio</h3>
         <input type="file" accept="audio/*" onChange={handleFileUpload} disabled={loading} />
         {loading && <p>Processing...</p>}
       </div>
 
-      {/* MANUAL EDIT */}
+      {/* Manual JSON Edit */}
       <div style={{ marginTop: "20px" }}>
         <h3>Step 2: JSON Data</h3>
         <textarea
           value={jsonInput}
           onChange={(e) => setJsonInput(e.target.value)}
-          placeholder='{"notes": [{"string":6, "fret":0, "stacking":false}, ...]}'
+          placeholder='{"notes": [{"string": [6,5], "fret": [0,2]}]}'
           rows={10}
           style={{ width: "100%", fontFamily: "monospace", padding: "10px" }}
         />
@@ -161,10 +138,17 @@ export default function TabDisplay() {
         </button>
       </div>
 
-      {/* OUTPUT */}
+      {/* Error Output */}
+      {error && <p style={{color: 'red'}}>{error}</p>}
+
+      {/* Tab Output */}
       {tabOutput && (
         <div style={{ marginTop: "20px" }}>
           <h3>Step 3: Guitar Tab</h3>
+          
+
+[Image of simple guitar chord chart]
+
           <pre style={{ 
             backgroundColor: "#222", 
             color: "#4CAF50", 
