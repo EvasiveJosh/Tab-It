@@ -18,13 +18,19 @@ We intend to add database storage to allow the storage and retrieval of tabs, so
 
 We are very excited to be bringing this product into reality, as we see great value for it in our own journey's as guitarists, and we know others will as well.
 
+# Images
+<img width="700" alt="dashboard" src="https://github.com/user-attachments/assets/5f404b83-9be6-4262-a7fa-10717e0b6288" />
+<img width="700" alt="tab_display" src="https://github.com/user-attachments/assets/20e84c96-dd06-493d-83e0-978f503525ce" />
+<img width="700" alt="tab_edit" src="https://github.com/user-attachments/assets/c10adc4e-44fb-4d82-9712-e3ed3faa857d" />
+
+
 # Dependencies 
 
 ## Rebuild Dependencies for /backend
 `pip install music21` \
 `pip install basic-pitch`\
 `pip install flask flask-cors` \
-`pip install dotenv'
+`pip install dotenv`
 
 ## For /auto-seperator
 `pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu` (or equivelant torch installation) \
