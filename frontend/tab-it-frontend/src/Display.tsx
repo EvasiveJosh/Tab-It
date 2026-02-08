@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import type { ChangeEvent } from 'react';
 
-// 1. Define the Shape of our Data
-interface TabJson {
-  notes: [number, number][]; // Array of [string, fret] tuples
+
+// 1. UPDATE INTERFACE
+interface NoteObj {
+  string: number;
+  fret: number;
+  stacking: boolean;
 }
 
-// Map string numbers (1-6) to their names
-const STRING_NAMES: { [key: number]: string } = {
-  1: "e", 2: "B", 3: "G", 4: "D", 5: "A", 6: "E"
-};
+interface TabJson {
+  notes: NoteObj[];
+}
 
 export default function TabDisplay() {
   const [jsonInput, setJsonInput] = useState<string>('');
@@ -17,80 +19,105 @@ export default function TabDisplay() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- A. HANDLE FILE UPLOAD ---
+  // --- HANDLE FILE UPLOAD (Same as before) ---
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setLoading(true);
     setError(null);
-
-    // 1. Create FormData to send the file
     const formData = new FormData();
-    formData.append('audio_file', file); // 'audio_file' must match backend key
+    formData.append('audio_file', file);
 
     try {
-      // 2. Send to Backend (Replace with your actual URL)
       const response = await fetch('http://localhost:5000/process-audio', {
         method: 'POST',
         body: formData,
       });
-
       if (!response.ok) throw new Error("Upload failed");
-
-      // 3. Receive JSON from Backend
       const data: TabJson = await response.json();
       
-      // 4. Auto-generate the tab from the response
-      setJsonInput(JSON.stringify(data, null, 2)); // Show raw JSON in text box
-      generateTab(data); // Generate visual tab
-
+      setJsonInput(JSON.stringify(data, null, 2));
+      generateTab(data);
     } catch (err) {
-      setError("Error processing file. Is the backend running?");
+      setError("Error processing file.");
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- B. GENERATE ASCII TAB ---
-  // Accepts data object directly, OR uses the text box state if null
+  // --- NEW LOGIC: HANDLING STACKING ---
   const generateTab = (data?: TabJson) => {
     setError(null);
     try {
       let parsed: TabJson;
-
-      // If data is passed (from upload), use it. Otherwise parse text box.
-      if (data) {
-        parsed = data;
-      } else {
-        parsed = JSON.parse(jsonInput);
-      }
+      if (data) parsed = data;
+      else parsed = JSON.parse(jsonInput);
 
       if (!parsed.notes || !Array.isArray(parsed.notes)) {
-        throw new Error("JSON must contain a 'notes' array of [string, fret].");
+        throw new Error("JSON must contain a 'notes' array.");
       }
 
-      // Initialize the 6 strings
-      // We use a Map or Object to hold the lines
+      // --- STEP 1: GROUP NOTES INTO COLUMNS ---
+      // We assume the first note always starts a new column.
+      // Subsequent notes with stacking=true go into the SAME column.
+      
+      // A "Column" is a map of String -> Fret (e.g., { 6: "0", 5: "2" })
+      let columns: Array<{ [stringNum: number]: string }> = [];
+      let currentColumn: { [stringNum: number]: string } | null = null;
+
+      parsed.notes.forEach((note, index) => {
+        // Validate
+        if (note.string < 1 || note.string > 6) return;
+
+        // LOGIC: If it's the first note OR stacking is false, create NEW column
+        if (index === 0 || note.stacking === false) {
+          // Push previous column if exists
+          if (currentColumn) columns.push(currentColumn);
+          
+          // Start new column
+          currentColumn = {};
+        }
+
+        // Add note to current column (whether new or existing)
+        if (currentColumn) {
+           currentColumn[note.string] = note.fret.toString();
+        }
+      });
+      
+      // Push the final column
+      if (currentColumn) columns.push(currentColumn);
+
+      // --- STEP 2: RENDER STRINGS ---
+      // Initialize lines
       let lines: { [key: number]: string } = {
         1: "e|", 2: "B|", 3: "G|", 4: "D|", 5: "A|", 6: "E|"
       };
 
-      parsed.notes.forEach(([stringNum, fret]) => {
-        // Validate
-        if (stringNum < 1 || stringNum > 6) return;
+      columns.forEach(col => {
+        // Find max width in this column (e.g. "12" is width 2, "5" is width 1)
+        // We need this so "5" gets padded to match "12" in a chord
+        let maxWidth = 0;
+        Object.values(col).forEach(fretStr => {
+          if (fretStr.length > maxWidth) maxWidth = fretStr.length;
+        });
+        
+        // If column is empty (rest), default width is 1
+        if (maxWidth === 0) maxWidth = 1;
 
-        const fretStr = fret.toString();
-        const width = fretStr.length; // 1 or 2 chars usually
-
-        // Update all 6 strings for this time slice
+        // Append to all 6 strings
         for (let i = 1; i <= 6; i++) {
-          if (i === stringNum) {
-            lines[i] += `-${fretStr}-`;
+          const fret = col[i]; // Value at this string (or undefined)
+          
+          if (fret !== undefined) {
+            // Note exists: Pad it to match max width
+            // e.g. "5" becomes "5 " if max is 2
+            const padding = "-".repeat(maxWidth - fret.length);
+            lines[i] += `-${fret}${padding}-`;
           } else {
-            // Add dashes of equal width to keep alignment
-            lines[i] += `-${'-'.repeat(width)}-`;
+            // No note: Add full dashes
+            lines[i] += `-${'-'.repeat(maxWidth)}-`;
           }
         }
       });
@@ -111,55 +138,33 @@ export default function TabDisplay() {
     <div style={{ maxWidth: "800px", margin: "2rem auto", padding: "1rem" }}>
       <h1>Tab-It: Audio to Tab Converter</h1>
       
-      {/* 1. FILE UPLOAD SECTION */}
-      <div style={{ 
-        border: "2px dashed #ccc", 
-        padding: "20px", 
-        marginBottom: "20px", 
-        borderRadius: "8px",
-        textAlign: "center"
-      }}>
+      {/* UPLOAD */}
+      <div style={{ border: "2px dashed #ccc", padding: "20px", borderRadius: "8px", textAlign: "center" }}>
         <h3>Step 1: Upload Audio</h3>
-        <input 
-          type="file" 
-          accept="audio/*" // Only allow audio files
-          onChange={handleFileUpload} 
-          disabled={loading}
-        />
-        {loading && <p>Processing... (This uses AI, please wait)</p>}
+        <input type="file" accept="audio/*" onChange={handleFileUpload} disabled={loading} />
+        {loading && <p>Processing...</p>}
       </div>
 
-      {/* 2. MANUAL EDIT SECTION */}
-      <div style={{ marginBottom: "20px" }}>
-        <h3>Step 2: Review JSON Data</h3>
+      {/* MANUAL EDIT */}
+      <div style={{ marginTop: "20px" }}>
+        <h3>Step 2: JSON Data</h3>
         <textarea
           value={jsonInput}
           onChange={(e) => setJsonInput(e.target.value)}
-          placeholder='{"notes": [[6,0], [6,3], [6,5]]}'
-          rows={6}
+          placeholder='{"notes": [{"string":6, "fret":0, "stacking":false}, ...]}'
+          rows={10}
           style={{ width: "100%", fontFamily: "monospace", padding: "10px" }}
         />
         <br />
-        <button 
-          onClick={() => generateTab()}
-          style={{ marginTop: "10px", padding: "8px 16px", cursor: "pointer" }}
-        >
+        <button onClick={() => generateTab()} style={{ marginTop: "10px", padding: "8px 16px" }}>
           Regenerate Tab
         </button>
       </div>
 
-      {/* 3. ERROR DISPLAY */}
-      {error && (
-        <div style={{ color: "red", backgroundColor: "#ffe6e6", padding: "10px", borderRadius: "4px" }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {/* 4. TAB OUTPUT */}
+      {/* OUTPUT */}
       {tabOutput && (
         <div style={{ marginTop: "20px" }}>
           <h3>Step 3: Guitar Tab</h3>
-          
           <pre style={{ 
             backgroundColor: "#222", 
             color: "#4CAF50", 

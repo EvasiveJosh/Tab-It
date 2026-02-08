@@ -4,7 +4,8 @@ Qhacks Project
 
 # Rebuild Dependencies
 `pip install music21` \
-`pip install basic-pitch`
+`pip install basic-pitch`\
+`pip install flask flask-cors`
 
 
 # Unused Dependencies (for disconnected component)
