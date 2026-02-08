@@ -2,10 +2,11 @@
 Qhacks Project
 
 
-# Rebuild Dependencies
+# Rebuild Dependencies for /backend
 `pip install music21` \
 `pip install basic-pitch`\
-`pip install flask flask-cors`
+`pip install flask flask-cors` \
+`pip install dotenv'
 
 
 ## For auto-seperator
