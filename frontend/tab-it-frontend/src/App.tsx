@@ -2,8 +2,10 @@ import TabDisplay from './Display';
 
 function App() {
   return (
-    <div>
-      <TabDisplay />
+    <div className="app-container">
+      <div className="content-wrapper">
+        <TabDisplay />
+      </div>
     </div>
   );
 }

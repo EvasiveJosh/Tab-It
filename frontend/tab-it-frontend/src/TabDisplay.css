@@ -1,0 +1,242 @@
+/* TabDisplay.css */
+
+/* --- GLOBAL RESET & LAYOUT --- */
+/* This fixes the modal cropping issue by including padding in width calculations */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.app-container {
+  min-height: 100vh;
+  background-color: #f9fafb; /* gray-50 */
+  color: #111827; /* gray-900 */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  padding-top: 6rem; /* Space for the fixed header */
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+  /* REMOVED MAX-WIDTH so it can fill the screen */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- HOT BAR (HEADER) --- */
+.hot-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rem;
+  background-color: #111827; /* gray-900 */
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  z-index: 50;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #4ade80; /* green-400 */
+  margin-right: 1.5rem;
+}
+
+.hot-bar-left, .hot-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* --- BUTTONS & INPUTS --- */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #374151; /* gray-700 */
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.upload-btn:hover {
+  background-color: #4b5563; /* gray-600 */
+}
+
+.hidden-input {
+  display: none;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #d1d5db; /* gray-300 */
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.icon-btn:hover {
+  color: white;
+}
+
+/* --- TAB OUTPUT AREA --- */
+.tab-container {
+  width: 100%;
+  /* CHANGED: Removed max-width restriction */
+  background-color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  /* CHANGED: Hidden overflow ensures no scrollbar ever appears */
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.tab-header {
+  background-color: #f3f4f6;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.tab-pre {
+  padding: 1.5rem;
+  /* CHANGED: Removed auto scroll, JS handles wrapping now */
+  overflow-x: hidden;
+  font-family: monospace; 
+  font-size: 0.875rem; /* ~14px */
+  line-height: 1.6;
+  background-color: white;
+  color: #1f2937;
+  white-space: pre-wrap; /* Helps prevent accidental run-offs */
+}
+
+/* --- MODAL --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: white;
+  width: 100%;
+  max-width: 48rem; /* 3xl */
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-body {
+  padding: 1rem;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.json-textarea {
+  width: 100%;
+  height: 60vh;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  background-color: #f9fafb;
+  resize: none;
+  
+  /* Critical fix for the cropping issue */
+  display: block; 
+}
+
+.json-textarea:focus {
+  outline: 2px solid #22c55e; /* green-500 */
+  border-color: transparent;
+}
+
+.modal-footer {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  color: #4b5563;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+.btn-cancel:hover {
+  background-color: #e5e7eb;
+}
+
+.btn-confirm {
+  padding: 0.5rem 1rem;
+  background-color: #16a34a; /* green-600 */
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-confirm:hover {
+  background-color: #15803d; /* green-700 */
+}
+
+/* --- UTILITIES --- */
+.error-msg {
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 56rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: #9ca3af;
+  margin-top: 5rem;
+}

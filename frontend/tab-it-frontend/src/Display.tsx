@@ -1,23 +1,133 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
+import './TabDisplay.css';
 
-// 1. NEW INTERFACE: Matches your specific { string: [], fret: [] } structure
+// --- INTERFACES ---
 interface NoteGroup {
-  string: number[]; // e.g. [6, 5, 4]
-  fret: number[];   // e.g. [0, 2, 2]
+  string: number[];
+  fret: number[];
 }
 
 interface TabJson {
   notes: NoteGroup[];
 }
 
+// --- ICONS ---
+const UploadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+);
+
+const CodeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+);
+
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+);
+
 export default function TabDisplay() {
   const [jsonInput, setJsonInput] = useState<string>('');
+  
+  const [rawLines, setRawLines] = useState<{ [key: number]: string } | null>(null);
   const [tabOutput, setTabOutput] = useState<string>('');
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  // --- HANDLE FILE UPLOAD (No changes here) ---
+  // --- 1. PROCESS JSON TO RAW LINES ---
+  // This function only builds the "infinite" strings, it does NOT format them for the screen yet.
+  const processJsonToLines = (data?: TabJson) => {
+    setError(null);
+    try {
+      let parsed: TabJson;
+      if (data) parsed = data;
+      else parsed = JSON.parse(jsonInput);
+
+      if (!parsed.notes || !Array.isArray(parsed.notes)) {
+        throw new Error("JSON must contain a 'notes' array.");
+      }
+
+      let lines: { [key: number]: string } = {
+        1: "e|", 2: "B|", 3: "G|", 4: "D|", 5: "A|", 6: "E|"
+      };
+
+      parsed.notes.forEach((group) => {
+        let currentBeat: { [key: number]: string } = {};
+        group.string.forEach((stringNum, idx) => {
+          const fretNum = group.fret[idx];
+          currentBeat[stringNum] = fretNum.toString();
+        });
+
+        let maxWidth = 1; 
+        Object.values(currentBeat).forEach(f => {
+          if (f.length > maxWidth) maxWidth = f.length;
+        });
+
+        for (let string = 1; string <= 6; string++) {
+          const fret = currentBeat[string];
+          if (fret !== undefined) {
+            const padding = "-".repeat(maxWidth - fret.length);
+            lines[string] += `-${fret}${padding}-`;
+          } else {
+            lines[string] += `-${"-".repeat(maxWidth)}-`;
+          }
+        }
+      });
+
+      // Save the raw infinite lines to state
+      setRawLines(lines);
+      setIsModalOpen(false);
+
+    } catch (err) {
+      setError("Invalid JSON format.");
+    }
+  };
+
+  // --- 2. DYNAMIC FORMATTER ---
+  const formatLinesToScreen = useCallback(() => {
+    if (!rawLines) return;
+
+    const PADDING_PX = 100; 
+    
+    const CHAR_WIDTH_PX = 9.8; 
+    
+    const availableWidth = window.innerWidth - PADDING_PX; 
+    
+    // Calculate how many chars fit (min 40 to avoid breaking on tiny screens)
+    const dynamicLimit = Math.max(40, Math.floor(availableWidth / CHAR_WIDTH_PX));
+
+    const CHARS_PER_LINE = dynamicLimit;
+    
+    let formattedOutput = "";
+    const totalLength = rawLines[1].length;
+
+    for (let i = 0; i < totalLength; i += CHARS_PER_LINE) {
+      const sliceEnd = i + CHARS_PER_LINE;
+      for (let string = 1; string <= 6; string++) {
+        const prefix = i === 0 ? "" : rawLines[string].substring(0, 2); 
+        let slice = rawLines[string].slice(i === 0 ? 0 : i + 2, sliceEnd);
+        formattedOutput += prefix + slice + "\n";
+      }
+      formattedOutput += "\n";
+    }
+
+    setTabOutput(formattedOutput);
+  }, [rawLines]);
+
+  // --- 3. RESIZE LISTENER ---
+  // Window Resize check for re-formatting
+  useEffect(() => {
+    formatLinesToScreen();
+
+    const handleResize = () => formatLinesToScreen();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [formatLinesToScreen]);
+
+
+  // --- HANDLERS ---
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -36,7 +146,7 @@ export default function TabDisplay() {
       const data: TabJson = await response.json();
       
       setJsonInput(JSON.stringify(data, null, 2));
-      generateTab(data);
+      processJsonToLines(data);
     } catch (err) {
       setError("Error processing file.");
       console.error(err);
@@ -45,122 +155,73 @@ export default function TabDisplay() {
     }
   };
 
-  // --- NEW GENERATION LOGIC ---
-  const generateTab = (data?: TabJson) => {
-    setError(null);
-    try {
-      let parsed: TabJson;
-      if (data) parsed = data;
-      else parsed = JSON.parse(jsonInput);
-
-      if (!parsed.notes || !Array.isArray(parsed.notes)) {
-        throw new Error("JSON must contain a 'notes' array.");
-      }
-
-      // Initialize the 6 strings lines
-      let lines: { [key: number]: string } = {
-        1: "e|", 2: "B|", 3: "G|", 4: "D|", 5: "A|", 6: "E|"
-      };
-
-      // Iterate through each "Time Column" (NoteGroup)
-      parsed.notes.forEach((group) => {
-        // 1. Create a quick lookup map for this specific beat
-        // key = string number, value = fret string
-        let currentBeat: { [key: number]: string } = {};
-        
-        // Loop through the arrays in the group
-        group.string.forEach((stringNum, idx) => {
-          const fretNum = group.fret[idx];
-          currentBeat[stringNum] = fretNum.toString();
-        });
-
-        // 2. Calculate Alignment Width
-        // Find the longest fret number in this chord (e.g. "12" is width 2)
-        let maxWidth = 0;
-        Object.values(currentBeat).forEach(f => {
-          if (f.length > maxWidth) maxWidth = f.length;
-        });
-        if (maxWidth === 0) maxWidth = 1; // Minimum width for empty beats
-
-        // 3. Append to all 6 lines
-        for (let string = 1; string <= 6; string++) {
-          const fret = currentBeat[string];
-
-          if (fret !== undefined) {
-            // If note exists, pad it to match maxWidth
-            // e.g. "5" becomes "5-" if max is 2
-            const padding = "-".repeat(maxWidth - fret.length);
-            lines[string] += `-${fret}${padding}-`;
-          } else {
-            // If silent, add full dashes
-            lines[string] += `-${'-'.repeat(maxWidth)}-`;
-          }
-        }
-      });
-
-      // Join lines (High E on top)
-      const finalString = [
-        lines[1], lines[2], lines[3], lines[4], lines[5], lines[6]
-      ].join("\n");
-
-      setTabOutput(finalString);
-
-    } catch (err) {
-      setError("Invalid JSON format or array length mismatch.");
-      console.error(err);
-    }
+  const handleManualRegenerate = () => {
+    processJsonToLines();
   };
 
   return (
-    <div style={{ maxWidth: "800px", margin: "2rem auto", padding: "1rem" }}>
-      <h1>Tab-It: Audio to Tab Converter</h1>
+    <div className="app-container">
       
-      {/* Upload Section */}
-      <div style={{ border: "2px dashed #ccc", padding: "20px", borderRadius: "8px", textAlign: "center" }}>
-        <h3>Step 1: Upload Audio</h3>
-        <input type="file" accept="audio/*" onChange={handleFileUpload} disabled={loading} />
-        {loading && <p>Processing...</p>}
-      </div>
+      {/* --- HOT BAR --- */}
+      <header className="hot-bar">
+        <div className="hot-bar-left">
+          <h1 className="brand-title">TAB-IT</h1>
+          <label className="upload-btn">
+            <UploadIcon />
+            <span>{loading ? "Processing..." : "Upload File"}</span>
+            <input type="file" className="hidden-input" accept="audio/*" onChange={handleFileUpload} disabled={loading} />
+          </label>
+        </div>
 
-      {/* Manual JSON Edit */}
-      <div style={{ marginTop: "20px" }}>
-        <h3>Step 2: JSON Data</h3>
-        <textarea
-          value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
-          placeholder='{"notes": [{"string": [6,5], "fret": [0,2]}]}'
-          rows={10}
-          style={{ width: "100%", fontFamily: "monospace", padding: "10px" }}
-        />
-        <br />
-        <button onClick={() => generateTab()} style={{ marginTop: "10px", padding: "8px 16px" }}>
-          Regenerate Tab
+        <button onClick={() => setIsModalOpen(true)} className="icon-btn">
+          <CodeIcon />
+          <span>Edit JSON</span>
         </button>
-      </div>
+      </header>
 
-      {/* Error Output */}
-      {error && <p style={{color: 'red'}}>{error}</p>}
+      {/* --- MAIN CONTENT --- */}
+      <main className="main-content">
+        
+        {error && <div className="error-msg">{error}</div>}
 
-      {/* Tab Output */}
-      {tabOutput && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>Step 3: Guitar Tab</h3>
-          
+        {tabOutput ? (
+          <div className="tab-container">
+            <div className="tab-header">Generated Tab</div>
+            {/* Note: We added whitespace-pre-wrap just in case, but our JS handles the breaks */}
+            <pre className="tab-pre">
+              {tabOutput}
+            </pre>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <p>Upload an audio file to generate your guitar tab.</p>
+          </div>
+        )}
+      </main>
 
-[Image of simple guitar chord chart]
-
-          <pre style={{ 
-            backgroundColor: "#222", 
-            color: "#4CAF50", 
-            padding: "20px", 
-            borderRadius: "8px", 
-            overflowX: "auto",
-            fontFamily: "Courier New, monospace",
-            fontWeight: "bold",
-            fontSize: "14px"
-          }}>
-            {tabOutput}
-          </pre>
+      {/* --- MODAL --- */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit JSON Data</h3>
+              <button onClick={() => setIsModalOpen(false)} className="icon-btn" style={{color: '#6b7280'}}>
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="modal-body">
+              <textarea
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+                className="json-textarea"
+                placeholder='{"notes": []}'
+              />
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setIsModalOpen(false)} className="btn-cancel">Cancel</button>
+              <button onClick={handleManualRegenerate} className="btn-confirm">Regenerate Tab</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
