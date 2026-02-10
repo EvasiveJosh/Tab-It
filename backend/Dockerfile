@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Install dependencies from requirements.txt (filter out Windows-only packages)
 COPY requirements.txt .
-RUN grep -iv "tensorflow-intel\|tensorflow-io-gcs-filesystem" requirements.txt > requirements_filtered.txt && \
+RUN sed -i 's/\r$//' requirements.txt && \
+    grep -aiv "tensorflow-intel\|tensorflow-io-gcs-filesystem" requirements.txt > requirements_filtered.txt && \
     pip install --no-cache-dir -r requirements_filtered.txt && \
     rm requirements_filtered.txt
 RUN pip install --no-cache-dir gunicorn

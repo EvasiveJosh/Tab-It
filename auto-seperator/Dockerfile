@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir \
 
 # Install remaining dependencies from requirements.txt (skip torch lines, already installed above)
 COPY requirements.txt .
-RUN grep -iv "^torch" requirements.txt > requirements_filtered.txt && \
+RUN sed -i 's/\r$//' requirements.txt && \
+    grep -aiv "^torch" requirements.txt > requirements_filtered.txt && \
     pip install --no-cache-dir -r requirements_filtered.txt && \
     rm requirements_filtered.txt
     

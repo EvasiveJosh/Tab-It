@@ -10,3 +10,4 @@ output_stems/
 scratch
 *.mp3
 .env
+.gitattributes
