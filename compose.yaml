@@ -1,0 +1,17 @@
+# ============================================================
+# Base / shared configuration — included by dev AND prod
+# ============================================================
+services:
+  # ---- Main Backend (Flask) ----
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - SEPARATOR_URL=http://auto-separator:5000
+    depends_on:
+      - auto-separator
+
+  # ---- Audio Separator (Flask + ML) ----
+  auto-separator:
+    build:
+      context: ./auto-seperator

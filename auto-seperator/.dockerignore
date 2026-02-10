@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+venv/
+.venv/
+uploads/
+output_stems/
+*.wav
+*.mp3
+*.mid
+.git
+.gitignore
+

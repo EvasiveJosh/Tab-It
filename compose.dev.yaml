@@ -1,0 +1,26 @@
+# ============================================================
+# Dev overrides  —  docker compose -f compose.yaml -f compose.dev.yaml up --build
+# Run the frontend separately on the host:  cd frontend/tab-it-frontend && npm run dev
+# ============================================================
+services:
+  # ---- Backend: Flask dev server with auto-reload ----
+  backend:
+    command: ["python", "app.py"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+
+  # ---- Auto-separator: Flask dev server with auto-reload ----
+  auto-separator:
+    command: ["python", "audio_splitter.py"]
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./auto-seperator:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
