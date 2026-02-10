@@ -14,6 +14,8 @@ A web app that lets users upload songs and get easy-to-read guitar tab. Built on
   - [Development](#development)
   - [Production](#production)
   - [Compose File Structure](#compose-file-structure)
+  - [Docker Compose Usage](#docker-compose-usage)
+  - [Docker Build Best Practices](#docker-build-best-practices)
 - [Running without Docker](#running-without-docker)
 - [Updating Dependencies](#updating-dependencies)
 - [Screenshots](#screenshots)
@@ -126,6 +128,38 @@ docker compose -f compose.yaml -f compose.prod.yaml up --build
 | `compose.yaml` | Base config shared by dev and prod (build contexts, env vars, service dependencies) |
 | `compose.dev.yaml` | Dev overrides — volume mounts, Flask debug mode, dev server commands |
 | `compose.prod.yaml` | Prod overrides — adds the frontend service, exposes ports, uses Dockerfile defaults (gunicorn / nginx) |
+
+### Docker Compose usage
+
+#### Rebuilding a single service
+
+A full `--build` rebuilds every service. If you only changed one service's Dockerfile or dependencies, you can target just that service:
+
+```bash
+# Rebuild and restart only the backend
+docker compose -f compose.yaml -f compose.dev.yaml up --build backend
+
+# Rebuild and restart only the auto-separator
+docker compose -f compose.yaml -f compose.dev.yaml up --build auto-separator
+```
+
+The other service(s) will keep running untouched.
+
+#### Docker build best practices
+
+Since the images may contain heavy ML libraries, to keep development fast when adding new dependencies, **install new packages live for quick testing.** Instead of rebuilding, install directly in the running container:
+
+```bash
+# Install into the running backend container
+docker compose -f compose.yaml -f compose.dev.yaml exec backend pip install <package>
+
+# Install into the running auto-separator container
+docker compose -f compose.yaml -f compose.dev.yaml exec auto-separator pip install <package>
+```
+
+This is instant but temporary — the package disappears when the container is recreated. Once you're happy with it, add it to `requirements.txt` and do a proper `--build`.
+
+**Rebuild only the service you changed.** If you updated `backend/requirements.txt`, run `up --build backend` instead of `up --build` so you don't rebuild the auto-separator for no reason (and vice versa).
 
 ## Running without Docker
 

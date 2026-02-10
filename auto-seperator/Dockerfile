@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Install system dependencies (ffmpeg required for audio-separator)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
+    ffmpeg build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
