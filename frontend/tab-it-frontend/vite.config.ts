@@ -10,6 +10,7 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        timeout: 600000,       // 10 minutes for slow audio processing
       },
     },
   },
