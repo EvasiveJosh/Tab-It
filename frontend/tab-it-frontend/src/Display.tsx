@@ -138,7 +138,7 @@ export default function TabDisplay() {
     formData.append('audio_file', file);
 
     try {
-      const response = await fetch('http://localhost:5000/process-audio', {
+      const response = await fetch('/api/process-audio', {
         method: 'POST',
         body: formData,
       });

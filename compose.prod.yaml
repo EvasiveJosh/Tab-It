@@ -12,11 +12,13 @@ services:
       - backend
 
   # ---- Backend: gunicorn (uses Dockerfile CMD) ----
+  # No public port needed — nginx reverse-proxies /api/ → backend:5000
   backend:
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
 
   # ---- Auto-separator: gunicorn (uses Dockerfile CMD) ----
+  # No public port needed — only the backend talks to it internally
   auto-separator:
-    ports:
-      - "5001:5000"
+    expose:
+      - "5000"
