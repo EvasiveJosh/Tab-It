@@ -9,6 +9,7 @@ services:
     environment:
       - SEPARATOR_URL=http://auto-separator:5000
     depends_on:
+      - auto-separator
     # Give the backend enough time to finish an in-flight request on shutdown
     stop_grace_period: 1860s
 
