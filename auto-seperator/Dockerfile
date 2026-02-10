@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir gunicorn
 COPY . .
 
 # Create working directories
-RUN mkdir -p uploads output_stems
+RUN mkdir -p uploads output_stems downloads
 
 EXPOSE 5000
 

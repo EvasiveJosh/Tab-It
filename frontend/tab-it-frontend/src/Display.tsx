@@ -12,6 +12,13 @@ interface TabJson {
   notes: NoteGroup[];
 }
 
+interface ProgressInfo {
+  step: number;
+  totalSteps: number;
+  message: string;
+  progress: number;
+}
+
 // --- ICONS ---
 const UploadIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -25,6 +32,16 @@ const CloseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 );
 
+// --- STEP LABELS (match backend totalSteps = 6) ---
+const STEP_LABELS: Record<number, string> = {
+  1: 'Uploading',
+  2: 'Separating',
+  3: 'Downloading',
+  4: 'WAV → MIDI',
+  5: 'Extracting',
+  6: 'Fretboard',
+};
+
 export default function TabDisplay() {
   const [jsonInput, setJsonInput] = useState<string>('');
   
@@ -34,6 +51,7 @@ export default function TabDisplay() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [progress, setProgress] = useState<ProgressInfo | null>(null);
 
   // --- 1. PROCESS JSON TO RAW LINES ---
   // This function only builds the "infinite" strings, it does NOT format them for the screen yet.
@@ -134,6 +152,8 @@ export default function TabDisplay() {
 
     setLoading(true);
     setError(null);
+    setProgress({ step: 0, totalSteps: 6, message: 'Uploading file...', progress: 0 });
+
     const formData = new FormData();
     formData.append('audio_file', file);
 
@@ -142,16 +162,62 @@ export default function TabDisplay() {
         method: 'POST',
         body: formData,
       });
+
       if (!response.ok) throw new Error("Upload failed");
-      const data: TabJson = await response.json();
-      
-      setJsonInput(JSON.stringify(data, null, 2));
-      processJsonToLines(data);
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE events are separated by double newlines
+        const events = buffer.split('\n\n');
+        // Keep the last (possibly incomplete) chunk in the buffer
+        buffer = events.pop() || '';
+
+        for (const event of events) {
+          for (const line of event.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+
+            const data = JSON.parse(line.slice(6));
+
+            // Error from backend
+            if (data.error) {
+              setError(data.error);
+              setLoading(false);
+              setProgress(null);
+              return;
+            }
+
+            // Update progress
+            setProgress({
+              step: data.step ?? 0,
+              totalSteps: data.totalSteps ?? 6,
+              message: data.message ?? 'Processing...',
+              progress: data.progress ?? 0,
+            });
+
+            // Final result
+            if (data.result) {
+              setJsonInput(JSON.stringify(data.result, null, 2));
+              processJsonToLines(data.result);
+            }
+          }
+        }
+      }
     } catch (err) {
       setError("Error processing file.");
       console.error(err);
     } finally {
       setLoading(false);
+      // Keep the final "Complete!" message visible briefly
+      setTimeout(() => setProgress(null), 1500);
     }
   };
 
@@ -184,6 +250,51 @@ export default function TabDisplay() {
         
         {error && <div className="error-msg">{error}</div>}
 
+        {/* --- PROGRESS TRACKER --- */}
+        {loading && progress && (
+          <div className="progress-container">
+            {/* Step indicator dots */}
+            <div className="progress-steps">
+              {Array.from({ length: progress.totalSteps }, (_, i) => {
+                const stepNum = i + 1;
+                const isActive = stepNum === progress.step;
+                const isComplete = stepNum < progress.step || progress.progress === 100;
+                return (
+                  <div key={stepNum} className="progress-step-item">
+                    <div
+                      className={`progress-dot ${isComplete ? 'dot-complete' : ''} ${isActive ? 'dot-active' : ''}`}
+                    >
+                      {isComplete ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <span className="dot-number">{stepNum}</span>
+                      )}
+                    </div>
+                    <span className={`step-label ${isActive ? 'label-active' : ''} ${isComplete ? 'label-complete' : ''}`}>
+                      {STEP_LABELS[stepNum] ?? `Step ${stepNum}`}
+                    </span>
+                    {stepNum < progress.totalSteps && <div className={`step-connector ${isComplete ? 'connector-complete' : ''}`} />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress bar */}
+            <div className="progress-bar-wrapper">
+              <div className="progress-bar-bg">
+                <div
+                  className="progress-bar-fill"
+                  style={{ width: `${progress.progress}%` }}
+                />
+              </div>
+              <span className="progress-percent">{progress.progress}%</span>
+            </div>
+
+            {/* Status message */}
+            <p className="progress-message">{progress.message}</p>
+          </div>
+        )}
+
         {tabOutput ? (
           <div className="tab-container">
             <div className="tab-header">Generated Tab</div>
@@ -192,7 +303,7 @@ export default function TabDisplay() {
               {tabOutput}
             </pre>
           </div>
-        ) : (
+        ) : !loading && (
           <div className="empty-state">
             <p>Upload an audio file to generate your guitar tab.</p>
           </div>

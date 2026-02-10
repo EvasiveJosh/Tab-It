@@ -223,6 +223,147 @@
   background-color: #15803d; /* green-700 */
 }
 
+/* --- PROGRESS TRACKER --- */
+.progress-container {
+  width: 100%;
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 1.5rem 2rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Step indicator row ── */
+.progress-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 1.25rem;
+}
+
+.progress-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-dot {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background-color: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9ca3af;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.dot-active {
+  border-color: #22c55e;
+  background-color: #dcfce7;
+  color: #16a34a;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+  animation: pulse-dot 2s infinite;
+}
+
+.dot-complete {
+  border-color: #16a34a;
+  background-color: #16a34a;
+  color: white;
+}
+
+.dot-number {
+  line-height: 1;
+}
+
+.step-label {
+  margin-top: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.label-active {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.label-complete {
+  color: #374151;
+}
+
+/* Connector line between dots */
+.step-connector {
+  position: absolute;
+  top: 0.875rem;           /* vertically centre with the dot */
+  left: calc(50% + 1rem);  /* start right of the dot */
+  width: calc(100% - 2rem);
+  height: 2px;
+  background-color: #e5e7eb;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+}
+
+.connector-complete {
+  background-color: #16a34a;
+}
+
+/* ── Progress bar ── */
+.progress-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-bar-bg {
+  flex: 1;
+  height: 0.6rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.progress-percent {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #16a34a;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.progress-message {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15); }
+  50%      { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.08); }
+}
+
 /* --- UTILITIES --- */
 .error-msg {
   background-color: #fee2e2;
