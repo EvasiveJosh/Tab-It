@@ -2,12 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies from requirements.txt (filter out Windows-only packages)
+# Install dependencies
 COPY requirements.txt .
 RUN sed -i 's/\r$//' requirements.txt && \
-    grep -aiv "tensorflow-intel\|tensorflow-io-gcs-filesystem" requirements.txt > requirements_filtered.txt && \
-    pip install --no-cache-dir -r requirements_filtered.txt && \
-    rm requirements_filtered.txt
+    pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir gunicorn
 
 # Copy application code
