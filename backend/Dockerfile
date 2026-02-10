@@ -16,7 +16,7 @@ RUN mkdir -p uploads midi_output
 
 EXPOSE 5000
 
-# Use gunicorn; high timeout for ML inference (basic-pitch)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "300", "--workers", "1", "app:app"]
+# timeout must exceed the auto-separator's timeout
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "1800", "--graceful-timeout", "1800", "--workers", "1", "app:app"]
 
 

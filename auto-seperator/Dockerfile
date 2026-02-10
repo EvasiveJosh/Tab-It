@@ -30,8 +30,7 @@ RUN mkdir -p uploads output_stems
 
 EXPOSE 5000
 
-# Use gunicorn with a single worker (ML model is memory-heavy)
-# High timeout because audio separation can take a while
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "600", "--workers", "1", "audio_splitter:app"]
+# Use gunicorn with a single worker
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "1800", "--graceful-timeout", "1800", "--workers", "1", "audio_splitter:app"]
 
 
