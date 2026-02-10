@@ -8,6 +8,7 @@ services:
       context: ./backend
     environment:
       - SEPARATOR_URL=http://auto-separator:5000
+      - PYTHONUNBUFFERED=1
     depends_on:
       - auto-separator
     # Give the backend enough time to finish an in-flight request on shutdown
@@ -17,5 +18,7 @@ services:
   auto-separator:
     build:
       context: ./auto-seperator
+    environment:
+      - PYTHONUNBUFFERED=1
     # don't SIGKILL during shutdown
     stop_grace_period: 1860s
